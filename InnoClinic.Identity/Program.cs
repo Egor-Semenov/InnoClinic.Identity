@@ -10,7 +10,7 @@ namespace InnoClinic.Identity
 
             builder.Services.ConfigureSqlConnection(builder.Configuration);
             builder.Services.ConfigureIdentityUsers();
-            builder.Services.ConfigureIdentityServer();
+            builder.Services.ConfigureIdentityServer(builder.Configuration);
 
             builder.Services.AddControllersWithViews();
 
@@ -26,6 +26,7 @@ namespace InnoClinic.Identity
             app.UseAuthorization();
             app.MapDefaultControllerRoute();
 
+            app.MigrateDatabase();
             app.Run();
         }
     }

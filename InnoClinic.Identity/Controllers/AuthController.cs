@@ -1,5 +1,5 @@
-﻿using IdentityModel.Client;
-using IdentityServer4.Services;
+﻿using Duende.IdentityServer.Services;
+using IdentityModel.Client;
 using InnoClinic.Identity.Models.Entities;
 using InnoClinic.Identity.Models.Views;
 using Microsoft.AspNetCore.Identity;
@@ -22,7 +22,7 @@ namespace InnoClinic.Identity.Controllers
 
         [HttpGet]
         public IActionResult Login(string returnUrl)
-        {
+        {         
             var viewModel = new LoginViewModel
             {
                 ReturnUrl = returnUrl
@@ -39,15 +39,6 @@ namespace InnoClinic.Identity.Controllers
                 return View(viewModel);
             }
 
-            var user = await _userManager.FindByNameAsync(viewModel.Username);
-            var userRole = await _userManager.GetRolesAsync(user);
-
-            if (user is null)
-            {
-                ModelState.AddModelError(string.Empty, "User not found");
-                return View(viewModel);
-            }
-
             var result = await _signInManager.PasswordSignInAsync(viewModel.Username, viewModel.Password, false, false);
             if (result.Succeeded)
             {
@@ -55,13 +46,13 @@ namespace InnoClinic.Identity.Controllers
 
                 Response.Cookies.Append("AccessToken", accessToken, new CookieOptions
                 {
-                    HttpOnly = true,
+                    HttpOnly = false,
                     Secure = true,
                     SameSite = SameSiteMode.Strict,
-                    Expires = DateTime.Now.AddMinutes(30)
+                    Expires = DateTime.Now.AddMinutes(5),
                 });
 
-                return Redirect("https://localhost:7187/swagger/index.html");
+                return Redirect("http://localhost:4200/receptionists");
             }
 
             ModelState.AddModelError(string.Empty, "Login failed");

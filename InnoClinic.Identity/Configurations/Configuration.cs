@@ -1,25 +1,25 @@
-﻿using IdentityModel;
-using IdentityServer4;
-using IdentityServer4.Models;
+﻿using Duende.IdentityServer;
+using Duende.IdentityServer.Models;
+using IdentityModel;
 
 namespace InnoClinic.Identity.Configurations
 {
     public sealed class Configuration
     {
-        public static IEnumerable<ApiScope> ApiScopes =>
+        public static List<ApiScope> ApiScopes =>
             new List<ApiScope>
             {
                 new ("InnoClinicWebApi", "Web Api")
             };
 
-        public static IEnumerable<IdentityResource> IdentityResources =>
+        public static List<IdentityResource> IdentityResources =>
             new List<IdentityResource>
             {
                 new IdentityResources.OpenId(),
                 new IdentityResources.Profile(),
             };
 
-        public static IEnumerable<ApiResource> ApiResources =>
+        public static List<ApiResource> ApiResources =>
             new List<ApiResource>
             {
                 new ApiResource("InnoClinicWebApi", "Web Api", new[] { JwtClaimTypes.Name })
@@ -29,7 +29,7 @@ namespace InnoClinic.Identity.Configurations
                 }
             };
 
-        public static IEnumerable<Client> Clients =>
+        public static List<Client> Clients =>
             new List<Client>
             {
                 new Client
@@ -38,7 +38,8 @@ namespace InnoClinic.Identity.Configurations
                     ClientSecrets = new [] { new Secret("inno-clinic-secret".Sha512()) },
                     AllowedGrantTypes = GrantTypes.ResourceOwnerPasswordAndClientCredentials,
                     AllowedScopes = { IdentityServerConstants.StandardScopes.OpenId, IdentityServerConstants.StandardScopes.Profile, "InnoClinicWebApi" },
-                    AllowAccessTokensViaBrowser = true
+                    RedirectUris = { "http://localhost:4200/signin-oidc" },
+                    AllowAccessTokensViaBrowser = true,
                 }
             };
     }

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InnoClinic.Identity.Migrations
 {
     [DbContext(typeof(AuthDbContext))]
-    [Migration("20240105082059_AuthDbInit")]
+    [Migration("20240111185337_AuthDbInit")]
     partial class AuthDbInit
     {
         /// <inheritdoc />
