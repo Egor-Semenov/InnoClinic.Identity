@@ -2,6 +2,8 @@
 using IdentityModel.Client;
 using InnoClinic.Identity.Models.Entities;
 using InnoClinic.Identity.Models.Views;
+using InnoClinic.Identity.RabbitMQ.Interfaces;
+using InnoClinic.Identity.RabbitMQ.Models.Send;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,12 +14,14 @@ namespace InnoClinic.Identity.Controllers
         private readonly UserManager<AppUser> _userManager;
         private readonly SignInManager<AppUser> _signInManager;
         private readonly IIdentityServerInteractionService _interactionService;
+        private readonly IMessageProducer _messageProducer;
 
-        public AuthController(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IIdentityServerInteractionService interactionService)
+        public AuthController(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, IIdentityServerInteractionService interactionService, IMessageProducer messageProducer)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _interactionService = interactionService;
+            _messageProducer = messageProducer;
         }
 
         [HttpGet]
@@ -38,18 +42,23 @@ namespace InnoClinic.Identity.Controllers
             {
                 return View(viewModel);
             }
+            var user = await _userManager.FindByNameAsync(viewModel.Username);
+            if (!user.IsPasswordConfirmed)
+            {
+                return Redirect("https://localhost:7104/auth/resetpassword");
+            }
 
-            var result = await _signInManager.PasswordSignInAsync(viewModel.Username, viewModel.Password, false, false);
+            var result = await _signInManager.PasswordSignInAsync(user, viewModel.Password, false, false);
             if (result.Succeeded)
             {
-                var accessToken = await GetAccessToken(viewModel.Username, viewModel.Username);
+                var accessToken = await GetAccessToken(viewModel.Username, viewModel.Password);
 
                 Response.Cookies.Append("AccessToken", accessToken, new CookieOptions
                 {
                     HttpOnly = false,
                     Secure = true,
                     SameSite = SameSiteMode.Strict,
-                    Expires = DateTime.Now.AddMinutes(5),
+                    Expires = DateTime.Now.AddMinutes(30),
                 });
 
                 return Redirect("http://localhost:4200/receptionists");
@@ -80,7 +89,8 @@ namespace InnoClinic.Identity.Controllers
 
             var user = new AppUser
             {
-                UserName = viewModel.UserName
+                UserName = viewModel.UserName,
+                IsPasswordConfirmed = true
             };
 
             var result = await _userManager.CreateAsync(user, viewModel.Password);
@@ -90,6 +100,17 @@ namespace InnoClinic.Identity.Controllers
                 await _userManager.AddToRoleAsync(user, "Patient");
 
                 await _signInManager.SignInAsync(user, false);
+
+                _messageProducer.SendMessage(new PatientCreatedModel
+                {
+                    Username = viewModel.UserName,
+                    FirstName = viewModel.FirstName,
+                    LastName = viewModel.LastName,
+                    MiddleName = viewModel.MiddleName,
+                    PhoneNumber = viewModel.PhoneNumber,
+                    BirthDate = viewModel.BirthDate
+                });
+
                 return Redirect(viewModel.ReturnUrl);
             }
 
@@ -103,6 +124,40 @@ namespace InnoClinic.Identity.Controllers
             await _signInManager.SignOutAsync();
             var logoutRequest = await _interactionService.GetLogoutContextAsync(logoutId);
             return Redirect(logoutRequest.PostLogoutRedirectUri);
+        }
+
+        [HttpGet]
+        public IActionResult ResetPassword()
+        {
+            return View(new ResetPasswordViewModel());
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ResetPassword(ResetPasswordViewModel viewModel)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(viewModel);
+            }
+
+            var user = await _userManager.FindByNameAsync(viewModel.Username);
+            if (user is not null)
+            {
+                var result = await _userManager.ChangePasswordAsync(user, viewModel.OldPassword, viewModel.NewPassword);
+
+                if (result.Succeeded)
+                {
+                    user.IsPasswordConfirmed = true;
+                    result = await _userManager.UpdateAsync(user);
+                    if (result.Succeeded)
+                    {
+                        return Redirect("https://localhost:7104/auth/login");
+                    }
+                }
+            }
+
+            ModelState.AddModelError(string.Empty, "Reset password failed");
+            return View(viewModel);
         }
 
         private async Task<string> GetAccessToken(string username, string password)

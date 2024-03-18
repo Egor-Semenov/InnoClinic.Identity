@@ -3,7 +3,6 @@ using Duende.IdentityServer.EntityFramework.Mappers;
 using InnoClinic.Identity.Configurations;
 using Microsoft.EntityFrameworkCore;
 
-
 namespace InnoClinic.Identity
 {
     public static class MigrationManager

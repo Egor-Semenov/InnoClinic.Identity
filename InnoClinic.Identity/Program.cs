@@ -1,4 +1,7 @@
 using InnoClinic.Identity.Extensions;
+using InnoClinic.Identity.RabbitMQ.Interfaces;
+using InnoClinic.Identity.RabbitMQ.Producers;
+using InnoClinic.Identity.RabbitMQ.Subscribers;
 
 namespace InnoClinic.Identity
 {
@@ -11,6 +14,10 @@ namespace InnoClinic.Identity
             builder.Services.ConfigureSqlConnection(builder.Configuration);
             builder.Services.ConfigureIdentityUsers();
             builder.Services.ConfigureIdentityServer(builder.Configuration);
+
+            builder.Services.AddScoped<IMessageProducer, PatientCreatedProducer>();
+            builder.Services.AddHostedService<UserCreatedSubscriber>();
+            builder.Services.AddHostedService<UserDeletedSubscriber>();
 
             builder.Services.AddControllersWithViews();
 
